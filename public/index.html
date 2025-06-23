@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Atenxion Bank Credit Card Management Records</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    header img {
+      height: 50px;
+      margin-right: 15px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    button {
+      background-color: #0052cc;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+    #addForm {
+      display: none;
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    form input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    form button {
+      margin-right: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #0052cc;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .status-active {
+      background-color: #d4edda;
+      color: #155724;
+      font-weight: bold;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+    .status-blocked {
+      background-color: #f8d7da;
+      color: #721c24;
+      font-weight: bold;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="https://www.atenxion.ai/_next/image?url=%2Fassets%2Fatenxion-black.png&w=256&q=75" alt="Logo">
+  <h1>Atenxion Bank Credit Card Management</h1>
+</header>
+
+<button id="showAddBtn">+ Add New Record</button>
+
+<div id="addForm">
+  <form id="recordForm">
+    <input name="name" placeholder="Name" required />
+    <input name="dob" placeholder="DOB (YYYY-MM-DD)" required />
+    <input name="nric" placeholder="NRIC" required />
+    <input name="phone" placeholder="Phone Number" required />
+    <input name="creditCardNumber" placeholder="Credit Card Number" required />
+    <input name="creditCardType" placeholder="Credit Card Type" required />
+    <input name="expiryDate" placeholder="Expiry Date (MM/YY)" required />
+    <input name="status" placeholder="Status (Active/Blocked)" required />
+    <input name="remark" placeholder="Remark (optional)" />
+    <button type="submit">Save</button>
+    <button type="button" id="cancelBtn">Cancel</button>
+  </form>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>DOB</th>
+      <th>NRIC</th>
+      <th>Phone</th>
+      <th>Card #</th>
+      <th>Type</th>
+      <th>Expiry</th>
+      <th>Status</th>
+      <th>Remark</th>
+    </tr>
+  </thead>
+  <tbody id="recordsBody"></tbody>
+</table>
+
+<script>
+  const showAddBtn = document.getElementById('showAddBtn');
+  const addForm = document.getElementById('addForm');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const form = document.getElementById('recordForm');
+  const recordsBody = document.getElementById('recordsBody');
+
+  showAddBtn.onclick = () => {
+    addForm.style.display = 'block';
+    showAddBtn.style.display = 'none';
+  };
+
+  cancelBtn.onclick = () => {
+    form.reset();
+    addForm.style.display = 'none';
+    showAddBtn.style.display = 'inline-block';
+  };
+
+  form.onsubmit = e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    fetch('/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to add record');
+      return res.json();
+    })
+    .then(() => {
+      form.reset();
+      addForm.style.display = 'none';
+      showAddBtn.style.display = 'inline-block';
+      loadData();
+    })
+    .catch(err => alert(err.message));
+  };
+
+  function loadData() {
+    fetch('/records')
+      .then(res => res.json())
+      .then(data => {
+        recordsBody.innerHTML = '';
+        data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>${item.dob}</td>
+            <td>${item.nric}</td>
+            <td>${item.phone || ''}</td>
+            <td>${item.creditCardNumber}</td>
+            <td>${item.creditCardType}</td>
+            <td>${item.expiryDate}</td>
+            <td><span class="${item.status.toLowerCase() === 'active' ? 'status-active' : 'status-blocked'}">${item.status}</span></td>
+            <td>${item.remark || ''}</td>
+          `;
+          recordsBody.appendChild(tr);
+        });
+      });
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>
