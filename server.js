@@ -119,9 +119,12 @@ app.put('/api/data/card/:cardNumber', (req, res) => {
     ...req.body,
     creditCardNumber: req.params.cardNumber
   };
+
+  // ✅ Ensure required fields exist
   if (!updatedRecord.username || !updatedRecord.userid) {
     return res.status(400).json({ error: 'username and userid required' });
   }
+
   dataStore[index] = updatedRecord;
   saveData();
   res.json(updatedRecord);

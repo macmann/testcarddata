@@ -151,6 +151,7 @@
         <th>Expiry</th>
         <th>Status</th>
         <th>Remark</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody id="recordsBody"></tbody>
@@ -219,8 +220,13 @@ const logTo = document.getElementById('logTo');
 const logMethod = document.getElementById('logMethod');
 const applyLogFilter = document.getElementById('applyLogFilter');
 const logsBody = document.getElementById('logsBody');
+let editingCardNumber = null;
+let currentRecords = [];
 
   showAddBtn.onclick = () => {
+    editingCardNumber = null;
+    form.reset();
+    form.creditCardNumber.disabled = false;
     addForm.style.display = 'block';
     showAddBtn.style.display = 'none';
   };
@@ -228,6 +234,8 @@ const logsBody = document.getElementById('logsBody');
   cancelBtn.onclick = () => {
     form.reset();
     addForm.style.display = 'none';
+    form.creditCardNumber.disabled = false;
+    editingCardNumber = null;
     showAddBtn.style.display = 'inline-block';
   };
 
@@ -266,22 +274,37 @@ const logsBody = document.getElementById('logsBody');
     e.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
 
-    fetch('/records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to add record');
-      return res.json();
-    })
-    .then(() => {
-      form.reset();
-      addForm.style.display = 'none';
-      showAddBtn.style.display = 'inline-block';
-      loadData();
-    })
-    .catch(err => alert(err.message));
+    if (editingCardNumber) {
+      fetch(`/api/data/card/${editingCardNumber}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update record');
+        return res.json();
+      })
+      .then(() => {
+        cancelBtn.onclick();
+        loadData();
+      })
+      .catch(err => alert(err.message));
+    } else {
+      fetch('/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to add record');
+        return res.json();
+      })
+      .then(() => {
+        cancelBtn.onclick();
+        loadData();
+      })
+      .catch(err => alert(err.message));
+    }
   };
 
   ticketForm.onsubmit = e => {
@@ -316,6 +339,7 @@ const logsBody = document.getElementById('logsBody');
     fetch('/records')
       .then(res => res.json())
       .then(data => {
+        currentRecords = data;
         recordsBody.innerHTML = '';
         data.forEach(item => {
           const tr = document.createElement('tr');
@@ -331,11 +355,30 @@ const logsBody = document.getElementById('logsBody');
             <td>${item.expiryDate}</td>
             <td><span class="${item.status.toLowerCase() === 'active' ? 'status-active' : 'status-blocked'}">${item.status}</span></td>
             <td>${item.remark || ''}</td>
+            <td><button class="editBtn" data-card="${item.creditCardNumber}">Edit</button></td>
           `;
           recordsBody.appendChild(tr);
         });
       });
   }
+
+  recordsBody.addEventListener('click', e => {
+    if (e.target.classList.contains('editBtn')) {
+      const card = e.target.getAttribute('data-card');
+      const record = currentRecords.find(r => r.creditCardNumber === card);
+      if (record) {
+        editingCardNumber = card;
+        addForm.style.display = 'block';
+        showAddBtn.style.display = 'none';
+        Object.keys(record).forEach(key => {
+          if (form.elements[key]) {
+            form.elements[key].value = record[key];
+          }
+        });
+        form.creditCardNumber.disabled = true;
+      }
+    }
+  });
 
   function loadTickets() {
     fetch('/api/tickets')
