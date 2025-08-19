@@ -10,6 +10,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const DATA_FILE = path.join(__dirname, 'data.json');
+const LOG_FILE = path.join(__dirname, 'logs.json');
 
 let dataStore = [];
 try {
@@ -19,8 +20,19 @@ try {
   dataStore = [];
 }
 
+let apiLogs = [];
+try {
+  apiLogs = JSON.parse(fs.readFileSync(LOG_FILE));
+} catch (err) {
+  apiLogs = [];
+}
+
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(dataStore, null, 2));
+}
+
+function saveLogs() {
+  fs.writeFileSync(LOG_FILE, JSON.stringify(apiLogs, null, 2));
 }
 
 app.use(bodyParser.json());
@@ -28,7 +40,14 @@ app.use(express.static('public'));
 
 // Log API requests
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  const entry = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.originalUrl
+  };
+  apiLogs.push(entry);
+  saveLogs();
+  console.log(`[${entry.timestamp}] ${entry.method} ${entry.url}`);
   next();
 });
 
@@ -87,6 +106,24 @@ app.get('/api/phone/:nric', (req, res) => {
   const record = dataStore.find(r => r.nric === req.params.nric);
   if (!record) return res.status(404).json({ error: 'Record not found' });
   res.json({ phone: record.phone || null });
+});
+
+app.get('/api/logs', (req, res) => {
+  const { from, to, method } = req.query;
+  let filtered = apiLogs;
+
+  if (from) {
+    const fromDate = new Date(from);
+    filtered = filtered.filter(log => new Date(log.timestamp) >= fromDate);
+  }
+  if (to) {
+    const toDate = new Date(to);
+    filtered = filtered.filter(log => new Date(log.timestamp) <= toDate);
+  }
+  if (method) {
+    filtered = filtered.filter(log => log.method === method.toUpperCase());
+  }
+  res.json(filtered);
 });
 
 app.listen(port, () => {
