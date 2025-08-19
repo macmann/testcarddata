@@ -11,6 +11,7 @@ const port = process.env.PORT || 3000;
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 const LOG_FILE = path.join(__dirname, 'logs.json');
+const TICKET_FILE = path.join(__dirname, 'tickets.json');
 
 let dataStore = [];
 try {
@@ -34,6 +35,19 @@ function saveData() {
 function saveLogs() {
   fs.writeFileSync(LOG_FILE, JSON.stringify(apiLogs, null, 2));
 }
+
+let ticketStore = [];
+try {
+  ticketStore = JSON.parse(fs.readFileSync(TICKET_FILE));
+} catch (err) {
+  ticketStore = [];
+}
+
+function saveTickets() {
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(ticketStore, null, 2));
+}
+
+const VALID_TICKET_STATUSES = ['New', 'In Progress', 'Resolved'];
 
 app.use(bodyParser.json());
 app.use(express.static('public'));
@@ -99,6 +113,42 @@ app.put('/api/data/card/:cardNumber/status', (req, res) => {
   dataStore[index].status = newStatus;
   saveData();
   res.json({ success: true, updatedRecord: dataStore[index] });
+});
+
+// Ticketing APIs
+app.get('/api/tickets', (req, res) => {
+  res.json(ticketStore);
+});
+
+app.post('/api/tickets', (req, res) => {
+  const { description } = req.body;
+  if (!description) return res.status(400).json({ error: 'Description required' });
+  const ticket = {
+    id: Date.now().toString(),
+    description,
+    status: 'New'
+  };
+  ticketStore.push(ticket);
+  saveTickets();
+  res.status(201).json({ id: ticket.id });
+});
+
+app.get('/api/tickets/:id', (req, res) => {
+  const ticket = ticketStore.find(t => t.id === req.params.id);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  res.json(ticket);
+});
+
+app.put('/api/tickets/:id/status', (req, res) => {
+  const ticket = ticketStore.find(t => t.id === req.params.id);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  const { status } = req.body;
+  if (!VALID_TICKET_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  ticket.status = status;
+  saveTickets();
+  res.json({ success: true, ticket });
 });
 
 // ✅ Get phone number by NRIC

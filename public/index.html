@@ -112,6 +112,7 @@
 
 <nav>
   <button id="recordsTab" class="tab active">Records</button>
+  <button id="ticketsTab" class="tab">Tickets</button>
   <button id="logsTab" class="tab">API Logs</button>
 </nav>
 
@@ -152,6 +153,24 @@
   </table>
 </div>
 
+<div id="ticketsSection" style="display:none;">
+  <form id="ticketForm">
+    <input name="description" placeholder="Description" required />
+    <button type="submit">Create Ticket</button>
+  </form>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th>Update</th>
+      </tr>
+    </thead>
+    <tbody id="ticketsBody"></tbody>
+  </table>
+</div>
+
 <div id="logsSection" style="display:none;">
   <div id="logFilters">
     <input type="date" id="logFrom" />
@@ -183,15 +202,19 @@
   const cancelBtn = document.getElementById('cancelBtn');
   const form = document.getElementById('recordForm');
   const recordsBody = document.getElementById('recordsBody');
-  const recordsTab = document.getElementById('recordsTab');
-  const logsTab = document.getElementById('logsTab');
-  const recordsSection = document.getElementById('recordsSection');
-  const logsSection = document.getElementById('logsSection');
-  const logFrom = document.getElementById('logFrom');
-  const logTo = document.getElementById('logTo');
-  const logMethod = document.getElementById('logMethod');
-  const applyLogFilter = document.getElementById('applyLogFilter');
-  const logsBody = document.getElementById('logsBody');
+const recordsTab = document.getElementById('recordsTab');
+const logsTab = document.getElementById('logsTab');
+const recordsSection = document.getElementById('recordsSection');
+const logsSection = document.getElementById('logsSection');
+const ticketsTab = document.getElementById('ticketsTab');
+const ticketsSection = document.getElementById('ticketsSection');
+const ticketForm = document.getElementById('ticketForm');
+const ticketsBody = document.getElementById('ticketsBody');
+const logFrom = document.getElementById('logFrom');
+const logTo = document.getElementById('logTo');
+const logMethod = document.getElementById('logMethod');
+const applyLogFilter = document.getElementById('applyLogFilter');
+const logsBody = document.getElementById('logsBody');
 
   showAddBtn.onclick = () => {
     addForm.style.display = 'block';
@@ -206,16 +229,30 @@
 
   recordsTab.onclick = () => {
     recordsSection.style.display = 'block';
+    ticketsSection.style.display = 'none';
     logsSection.style.display = 'none';
     recordsTab.classList.add('active');
+    ticketsTab.classList.remove('active');
     logsTab.classList.remove('active');
+  };
+
+  ticketsTab.onclick = () => {
+    recordsSection.style.display = 'none';
+    logsSection.style.display = 'none';
+    ticketsSection.style.display = 'block';
+    ticketsTab.classList.add('active');
+    recordsTab.classList.remove('active');
+    logsTab.classList.remove('active');
+    loadTickets();
   };
 
   logsTab.onclick = () => {
     recordsSection.style.display = 'none';
+    ticketsSection.style.display = 'none';
     logsSection.style.display = 'block';
     logsTab.classList.add('active');
     recordsTab.classList.remove('active');
+    ticketsTab.classList.remove('active');
     loadLogs();
   };
 
@@ -243,6 +280,34 @@
     .catch(err => alert(err.message));
   };
 
+  ticketForm.onsubmit = e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(ticketForm).entries());
+    fetch('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(() => {
+      ticketForm.reset();
+      loadTickets();
+    })
+    .catch(err => alert(err.message));
+  };
+
+  ticketsBody.addEventListener('click', e => {
+    if (e.target.classList.contains('updateTicketBtn')) {
+      const id = e.target.getAttribute('data-id');
+      const select = ticketsBody.querySelector(`select[data-id="${id}"]`);
+      const status = select.value;
+      fetch(`/api/tickets/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      }).then(() => loadTickets());
+    }
+  });
+
   function loadData() {
     fetch('/records')
       .then(res => res.json())
@@ -262,6 +327,28 @@
             <td>${item.remark || ''}</td>
           `;
           recordsBody.appendChild(tr);
+        });
+      });
+  }
+
+  function loadTickets() {
+    fetch('/api/tickets')
+      .then(res => res.json())
+      .then(data => {
+        ticketsBody.innerHTML = '';
+        data.forEach(ticket => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${ticket.id}</td>
+            <td>${ticket.description}</td>
+            <td>
+              <select data-id="${ticket.id}" class="ticketStatus">
+                ${['New','In Progress','Resolved'].map(s => `<option value="${s}" ${ticket.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            </td>
+            <td><button data-id="${ticket.id}" class="updateTicketBtn">Update</button></td>
+          `;
+          ticketsBody.appendChild(tr);
         });
       });
   }
