@@ -2,7 +2,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const port = 3000;
+// Use the PORT environment variable if provided (e.g. Render)
+const port = process.env.PORT || 3000;
 
 const dataFile = path.join(__dirname, 'data.json');
 
