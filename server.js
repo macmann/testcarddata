@@ -103,6 +103,20 @@ app.get('/api/data/card/:cardNumber', (req, res) => {
   res.json(record);
 });
 
+app.put('/api/data/card/:cardNumber', (req, res) => {
+  const index = dataStore.findIndex(item => item.creditCardNumber === req.params.cardNumber);
+  if (index === -1) return res.status(404).json({ error: 'Record not found' });
+
+  const updatedRecord = {
+    ...dataStore[index],
+    ...req.body,
+    creditCardNumber: req.params.cardNumber
+  };
+  dataStore[index] = updatedRecord;
+  saveData();
+  res.json(updatedRecord);
+});
+
 app.put('/api/data/card/:cardNumber/status', (req, res) => {
   const index = dataStore.findIndex(item => item.creditCardNumber === req.params.cardNumber);
   if (index === -1) return res.status(404).json({ error: 'Record not found' });
