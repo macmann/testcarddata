@@ -85,6 +85,22 @@
       padding: 6px 10px;
       border-radius: 4px;
     }
+    nav {
+      margin-bottom: 20px;
+    }
+    nav .tab {
+      margin-right: 10px;
+    }
+    nav .tab.active {
+      background-color: #003a99;
+    }
+    #logFilters {
+      margin-bottom: 15px;
+    }
+    #logFilters input, #logFilters select {
+      margin-right: 10px;
+      padding: 8px;
+    }
   </style>
 </head>
 <body>
@@ -94,40 +110,72 @@
   <h1>Atenxion Bank Credit Card Management</h1>
 </header>
 
-<button id="showAddBtn">+ Add New Record</button>
+<nav>
+  <button id="recordsTab" class="tab active">Records</button>
+  <button id="logsTab" class="tab">API Logs</button>
+</nav>
 
-<div id="addForm">
-  <form id="recordForm">
-    <input name="name" placeholder="Name" required />
-    <input name="dob" placeholder="DOB (YYYY-MM-DD)" required />
-    <input name="nric" placeholder="NRIC" required />
-    <input name="phone" placeholder="Phone Number" required />
-    <input name="creditCardNumber" placeholder="Credit Card Number" required />
-    <input name="creditCardType" placeholder="Credit Card Type" required />
-    <input name="expiryDate" placeholder="Expiry Date (MM/YY)" required />
-    <input name="status" placeholder="Status (Active/Blocked)" required />
-    <input name="remark" placeholder="Remark (optional)" />
-    <button type="submit">Save</button>
-    <button type="button" id="cancelBtn">Cancel</button>
-  </form>
+<div id="recordsSection">
+  <button id="showAddBtn">+ Add New Record</button>
+
+  <div id="addForm">
+    <form id="recordForm">
+      <input name="name" placeholder="Name" required />
+      <input name="dob" placeholder="DOB (YYYY-MM-DD)" required />
+      <input name="nric" placeholder="NRIC" required />
+      <input name="phone" placeholder="Phone Number" required />
+      <input name="creditCardNumber" placeholder="Credit Card Number" required />
+      <input name="creditCardType" placeholder="Credit Card Type" required />
+      <input name="expiryDate" placeholder="Expiry Date (MM/YY)" required />
+      <input name="status" placeholder="Status (Active/Blocked)" required />
+      <input name="remark" placeholder="Remark (optional)" />
+      <button type="submit">Save</button>
+      <button type="button" id="cancelBtn">Cancel</button>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>DOB</th>
+        <th>NRIC</th>
+        <th>Phone</th>
+        <th>Card #</th>
+        <th>Type</th>
+        <th>Expiry</th>
+        <th>Status</th>
+        <th>Remark</th>
+      </tr>
+    </thead>
+    <tbody id="recordsBody"></tbody>
+  </table>
 </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>DOB</th>
-      <th>NRIC</th>
-      <th>Phone</th>
-      <th>Card #</th>
-      <th>Type</th>
-      <th>Expiry</th>
-      <th>Status</th>
-      <th>Remark</th>
-    </tr>
-  </thead>
-  <tbody id="recordsBody"></tbody>
-</table>
+<div id="logsSection" style="display:none;">
+  <div id="logFilters">
+    <input type="date" id="logFrom" />
+    <input type="date" id="logTo" />
+    <select id="logMethod">
+      <option value="">All</option>
+      <option value="GET">GET</option>
+      <option value="POST">POST</option>
+      <option value="PUT">PUT</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+    <button id="applyLogFilter">Apply</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Method</th>
+        <th>URL</th>
+      </tr>
+    </thead>
+    <tbody id="logsBody"></tbody>
+  </table>
+</div>
 
 <script>
   const showAddBtn = document.getElementById('showAddBtn');
@@ -135,6 +183,15 @@
   const cancelBtn = document.getElementById('cancelBtn');
   const form = document.getElementById('recordForm');
   const recordsBody = document.getElementById('recordsBody');
+  const recordsTab = document.getElementById('recordsTab');
+  const logsTab = document.getElementById('logsTab');
+  const recordsSection = document.getElementById('recordsSection');
+  const logsSection = document.getElementById('logsSection');
+  const logFrom = document.getElementById('logFrom');
+  const logTo = document.getElementById('logTo');
+  const logMethod = document.getElementById('logMethod');
+  const applyLogFilter = document.getElementById('applyLogFilter');
+  const logsBody = document.getElementById('logsBody');
 
   showAddBtn.onclick = () => {
     addForm.style.display = 'block';
@@ -146,6 +203,23 @@
     addForm.style.display = 'none';
     showAddBtn.style.display = 'inline-block';
   };
+
+  recordsTab.onclick = () => {
+    recordsSection.style.display = 'block';
+    logsSection.style.display = 'none';
+    recordsTab.classList.add('active');
+    logsTab.classList.remove('active');
+  };
+
+  logsTab.onclick = () => {
+    recordsSection.style.display = 'none';
+    logsSection.style.display = 'block';
+    logsTab.classList.add('active');
+    recordsTab.classList.remove('active');
+    loadLogs();
+  };
+
+  applyLogFilter.onclick = () => loadLogs();
 
   form.onsubmit = e => {
     e.preventDefault();
@@ -188,6 +262,23 @@
             <td>${item.remark || ''}</td>
           `;
           recordsBody.appendChild(tr);
+        });
+      });
+  }
+
+  function loadLogs() {
+    const params = new URLSearchParams();
+    if (logFrom.value) params.append('from', logFrom.value);
+    if (logTo.value) params.append('to', logTo.value);
+    if (logMethod.value) params.append('method', logMethod.value);
+    fetch(`/api/logs?${params.toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        logsBody.innerHTML = '';
+        data.forEach(log => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${log.timestamp}</td><td>${log.method}</td><td>${log.url}</td>`;
+          logsBody.appendChild(tr);
         });
       });
   }
