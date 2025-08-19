@@ -71,7 +71,9 @@ app.get('/records', (req, res) => {
 
 app.post('/records', (req, res) => {
   const record = req.body;
-  if (!record.nric) return res.status(400).json({ error: 'NRIC required' });
+  if (!record.nric || !record.username || !record.userid) {
+    return res.status(400).json({ error: 'NRIC, username, and userid required' });
+  }
 
   if (dataStore.find(r => r.nric === record.nric)) {
     return res.status(409).json({ error: 'Record with this NRIC already exists' });
@@ -92,9 +94,14 @@ app.put('/records/:nric', (req, res) => {
   const index = dataStore.findIndex(r => r.nric === req.params.nric);
   if (index === -1) return res.status(404).json({ error: 'Record not found' });
 
-  dataStore[index] = req.body;
+  const updatedRecord = { ...dataStore[index], ...req.body, nric: req.params.nric };
+  if (!updatedRecord.username || !updatedRecord.userid) {
+    return res.status(400).json({ error: 'username and userid required' });
+  }
+
+  dataStore[index] = updatedRecord;
   saveData();
-  res.json(dataStore[index]);
+  res.json(updatedRecord);
 });
 
 app.get('/api/data/card/:cardNumber', (req, res) => {
@@ -112,6 +119,9 @@ app.put('/api/data/card/:cardNumber', (req, res) => {
     ...req.body,
     creditCardNumber: req.params.cardNumber
   };
+  if (!updatedRecord.username || !updatedRecord.userid) {
+    return res.status(400).json({ error: 'username and userid required' });
+  }
   dataStore[index] = updatedRecord;
   saveData();
   res.json(updatedRecord);
