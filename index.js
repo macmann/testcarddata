@@ -15,6 +15,12 @@ if (!fs.existsSync(dataFile)) {
 app.use(express.json());
 app.use(express.static('public')); // Serve frontend files from 'public' folder
 
+// Log API requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // GET all records
 app.get('/api/data', (req, res) => {
   fs.readFile(dataFile, 'utf-8', (err, data) => {
