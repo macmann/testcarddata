@@ -42,9 +42,9 @@ app.get('/api/data', (req, res) => {
 app.post('/api/data', (req, res) => {
   const newEntry = req.body;
 
-  // Basic validation: require 'nric' field (you can add more validations)
-  if (!newEntry.nric) {
-    return res.status(400).json({ error: 'NRIC is required' });
+  // Basic validation: require 'nric', 'username', and 'userid' fields
+  if (!newEntry.nric || !newEntry.username || !newEntry.userid) {
+    return res.status(400).json({ error: 'NRIC, username, and userid are required' });
   }
 
   fs.readFile(dataFile, 'utf-8', (err, data) => {
