@@ -26,6 +26,12 @@ function saveData() {
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Log API requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.get('/records', (req, res) => {
   res.json(dataStore);
 });
